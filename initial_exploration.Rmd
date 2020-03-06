@@ -1,6 +1,8 @@
 ---
 title: "RTwitter"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 In this notebook I want to explore how to pull data using Rtweet. 
@@ -17,6 +19,7 @@ library(tidyverse)
 library(zoo)
 library(tidytext)
 library(wordcloud2)
+library(wordcloud)
 
 ```
 
@@ -122,7 +125,8 @@ champ_week_faves <- champ_week_faves %>%
   filter( # removing https and t.co, as these aren't really relevant
     word != 'https' & 
       word != 't.co'
-  )
+  ) %>% 
+  arrange(desc(count))
 
 
 wordcloud2(champ_week_faves)
@@ -135,5 +139,40 @@ wordcloud2(champ_week_faves)
 Yep, thats definitely when the Caps won the Cup!
 
 
-Lets look at
+Lets do the same analysis for the actual max favorite week, to see what might have been driving all the favorites that week. 
+
+
+
+```{r abs max word salad}
+
+max_week_fave <- my_faves %>% 
+  filter(
+    created_at < as.Date('2019-08-15') & 
+      created_at >= as.Date('2019-08-08')
+      ) %>% 
+  select(text) %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words, by = 'word') %>% 
+  group_by(word) %>% 
+  summarize(count = n()) %>% 
+  filter( # removing https and t.co, as these aren't really relevant
+    word != 'https' & 
+      word != 't.co'
+  ) %>% 
+  arrange(desc(count))
+
+
+wordcloud(
+  max_week_fave$word, max_week_fave$count, colors = brewer.pal(8, "Dark2"),
+  min.freq = 2, random.order = FALSE, rot.per = 0.35, 
+  scale = c(3.5, .1)
+  )
+
+```
+
+
+
+Hmm, this word cloud doesn't make it clear if there was anything that happened that drove all the tweet favoriting. However, there does seem to be a clear theme: politics. I do heavily use twitter to stay up the date on news, especially as it relates to politics. 
+
+
 
