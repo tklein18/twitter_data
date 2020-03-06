@@ -1,0 +1,139 @@
+---
+title: "RTwitter"
+output: html_notebook
+---
+
+In this notebook I want to explore how to pull data using Rtweet. 
+
+First thing first, I need to download the Rtweet package. I'll also load the tidyverse at this time. 
+
+```{r installing and loading}
+
+# commenting out because I only want to run it once
+#install.packages('rtweet')
+
+library(rtweet)
+library(tidyverse)
+library(zoo)
+library(tidytext)
+library(wordcloud2)
+
+```
+
+
+
+I'm going to look at my favorites, because the limit I can pull is 3,000, and I've only favorited around 2,300 tweets. I can then do a little analysis of all of my favorites, and learn a little bit about myself and what I like!
+
+
+```{r my favorites}
+
+my_faves <- get_favorites('TommyPPickles', n = 3000)
+
+ts_plot(my_faves)
+
+```
+
+I started using twitter in 2017, and you can see thats when all of the favoriting really starts. However, I must have liked a couple of really old tweets from before I was on twitter, because there are a few favorites pre-2017, one is even pre-2014!
+
+Lets see if I can filter the data, or at least the graph, to only show more recent tweets. 
+
+```{r fav time series}
+
+my_faves %>% 
+  filter(created_at > as.Date('2017-01-01')) %>% 
+  ts_plot()
+
+```
+
+
+That certainly makes it easier to see. Lets see what it looks like if I aggregate the data more, like by weeks instead of days (which is the default). 
+
+```{r week time series}
+
+my_faves %>% 
+  filter(created_at > as.Date('2017-01-01')) %>% 
+  ts_plot('weeks')
+
+```
+
+
+That is much smoother!
+
+A couple of observations: the general trend is definitely upwards (I should probably spend less time on twitter), it looks like that trend started shortly before 2019, and there are lots of peaks. Lets look into the peaks!
+
+
+```{r peak weeks}
+
+my_faves %>% 
+  ts_data('weeks') %>% 
+  filter(n > 50)
+
+```
+
+
+The one that really catches my eye is the week of 2018-06-07. Its intriguinging because its one of my top-5 weeks for favoriting tweets, but it comes during a time when I wasn't really favoriting many tweets. To put it another way, it is likely relatively the most that I've favorited if you control for the average number of favorites during recent weeks. 
+
+Lets test this by taking an average of the number of favorites in the week before and after, and then subtracting that from the number of favorites. 
+
+```{r adjusted top}
+
+my_faves %>% 
+  ts_data('weeks') %>% 
+  mutate(
+    week_prior = lag(n, 1, default = 0), 
+    week_after = lead(n, 1, default = 0),
+    fav_adjustment = (week_prior + week_after) / 2, 
+    adjusted_favs = n - fav_adjustment
+  ) %>% 
+  top_n(10, adjusted_favs) %>% 
+  arrange(desc(adjusted_favs))
+
+```
+
+
+
+No other week comes close! I favorited about 70 more tweets the week of 2018-06-07 than the weeks immediately before and after. The next closest adjusted peak is 48! Something must have happened that week, and I think I know what it was. In 2018 in June the Washington Capitals became Stanley Cup Champions. It was one of the happiest moments of my life. The week of 2018-06-07 must have been the week they won, and I bet I can show it. 
+
+
+To show it, lets make a word cloud of all the tweets that I favorited during the week. It should feature lots of hockey and champion references. 
+
+```{r string split}
+
+
+champ_week_faves <- my_faves %>% 
+  filter(
+    created_at < as.Date('2018-06-14') & 
+      created_at >= as.Date('2018-06-07')
+      )
+
+# double-checking the count to make sure its 81
+
+champ_week_faves %>% nrow()
+
+
+# 
+
+champ_week_faves <- champ_week_faves %>% 
+  select(text) %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words, by = 'word') %>% 
+  group_by(word) %>% 
+  summarize(count = n()) %>% 
+  filter( # removing https and t.co, as these aren't really relevant
+    word != 'https' & 
+      word != 't.co'
+  )
+
+
+wordcloud2(champ_week_faves)
+
+
+
+```
+
+
+Yep, thats definitely when the Caps won the Cup!
+
+
+Lets look at
+
