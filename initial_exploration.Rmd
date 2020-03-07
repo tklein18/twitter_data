@@ -176,3 +176,32 @@ Hmm, this word cloud doesn't make it clear if there was anything that happened t
 
 
 
+
+I wonder what a word cloud for all my favorites would look like...
+
+```{r all fave word cloud}
+
+all_faves <- my_faves %>%
+  select(text) %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words, by = 'word') %>% 
+  group_by(word) %>% 
+  summarize(count = n()) %>% 
+  filter( # removing https and t.co, as these aren't really relevant
+    word != 'https' & 
+      word != 't.co'
+  ) %>% 
+  arrange(desc(count))
+
+
+fave_cloud <- wordcloud2(all_faves, shape = 'cardioid')
+
+fave_cloud
+
+```
+
+
+
+Wow, I feel seen. I use twitter to follow politics, sports, and data science, and this word cloud does a pretty good job of showing that. You can even get a sense of ranking of those groups; there are many more political references than sports and data science, and I would say there are more sports references than data science. 
+
+
